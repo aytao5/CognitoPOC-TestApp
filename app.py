@@ -15,6 +15,8 @@ COGNITO_USER_POOL_ID = os.environ['COGNITO_USER_POOL_ID']
 COGNITO_CLIENT_ID = os.environ['COGNITO_CLIENT_ID']
 COGNITO_CLIENT_SECRET = os.environ['COGNITO_CLIENT_SECRET']
 COGNITO_DOMAIN = f'https://cognito-idp.{COGNITO_REGION}.amazonaws.com/{COGNITO_USER_POOL_ID}'
+# Cognito Hosted UI domain (derived from OIDC discovery)
+COGNITO_HOSTED_DOMAIN = os.environ.get('COGNITO_HOSTED_DOMAIN', f'https://{COGNITO_USER_POOL_ID.replace("_", "").lower()}.auth.{COGNITO_REGION}.amazoncognito.com')
 
 oauth = OAuth(app)
 
@@ -98,7 +100,14 @@ def profile():
 @app.route('/logout')
 def logout():
     session.pop('user', None)
-    return redirect(url_for('index'))
+    # Redirect to Cognito's logout endpoint to also clear the Cognito session cookie.
+    # This ensures the user is fully logged out and will see the sign-in form next time.
+    logout_url = (
+        f"{COGNITO_HOSTED_DOMAIN}/logout?"
+        f"client_id={COGNITO_CLIENT_ID}&"
+        f"logout_uri=http://localhost:5000"
+    )
+    return redirect(logout_url)
 
 
 if __name__ == '__main__':
